@@ -241,7 +241,6 @@ app.post('/surveyanswer', function(request, response) {
             sql.close();
             sql.connect(pool)
                 .then(function () {
-
                     // Insert data - Start
                     let dbConn = new sql.ConnectionPool(pool,
                         function (err) {
@@ -294,6 +293,136 @@ app.post('/surveyanswer', function(request, response) {
 
 
 })
+
+app.get('/questions', function(req, res) {
+    try {
+        sql.close()
+        sql.connect(pool)
+            .then(function () {
+                // To retrieve all the data - Start
+                new sql.Request()
+                    .query("select * from BankSurveyQuestion")
+                    .then(function (dbData) {
+                        if (dbData == null || dbData.length === 0)
+                            return;
+                        console.dir('All the survey questions');
+                        console.dir(dbData);
+
+                        // send records as a response
+                        let surveyQuestion = dbData
+                        console.log('survey Question', dbData);
+                        sql.close()
+                        res.send(surveyQuestion.recordset);
+                    })
+                    .catch(function (error) {
+                        console.dir(error);
+                    });
+                // To retrieve all the data - End
+            }).catch(function (error) {
+            console.dir(error);
+        });
+    } catch (error) {
+        console.dir(error);
+    }
+});
+
+app.post('/surveyduplicatefind', function(request, response) {
+    let body = request.body;
+    //Try and SAVE THE Survey Answers
+    console.log("Body >>>");
+    // console.log("Body >>>", body);
+    let userAgent = body.userAgent;
+
+    try {
+        sql.close();
+        sql.connect(pool)
+            .then(function () {
+                console.log('user Agent >>>', userAgent)
+                new sql.Request()
+                    .query("select * from BankSurveyAnswers where userAgent = '"+userAgent+"'")
+                    .then(function (dbData) {
+                        if (dbData == null || dbData.length === 0)
+                            return;
+                        console.dir('Course with ID = 2');
+                        if (dbData.recordset.length === 0){
+                            console.dir(dbData);
+                            let vm = {
+                                responsecode: '00',
+                                responsemessage: 'No such Records Exists'
+                            }
+                            response.send(vm);
+                        }else {
+                            let vm = {
+                                responsecode: '01',
+                                responsemessage: 'This user Agent has already filled the Survey',
+                                record: dbData.recordset
+                            }
+                            response.send(vm);
+                        }
+                    })
+                    .catch(function (error) {
+                        console.dir(error);
+                    });
+                // To retrieve specicfic data - End
+            }).catch(function (error) {
+            console.dir(error);
+        });
+    } catch (error) {
+        console.dir(error);
+    }
+});
+
+
+app.get('/emptydb', function(request, response) {
+    console.log("About to empty DB");
+    try {
+        sql.close();
+        sql.connect(pool)
+            .then(function () {
+                // Delete data - Start
+                let delValue = 4;
+                let dbConn = new sql.ConnectionPool(pool,
+                    function (err) {
+                        let myTransaction = new sql.Transaction(dbConn);
+                        myTransaction.begin(function (error) {
+                            let rollBack = false;
+                            myTransaction.on('rollback',
+                                function (aborted) {
+                                    rollBack = true;
+                                });
+                            new sql.Request(myTransaction)
+                                .query("TRUNCATE TABLE  BankSurveyAnswers",
+                                    function (err, recordset) {
+                                        if (err) {
+                                            if (!rollBack) {
+                                                myTransaction.rollback(function (err) {
+                                                    console.dir(err);
+                                                });
+                                            }
+                                        } else {
+                                            myTransaction.commit().then(function (recordset) {
+                                                console.dir('Data is deleted successfully!');
+                                                let vm ={
+                                                    responsecode: "00",
+                                                    responsemessage: "BankSurveyAnswers table Truncated Successfully"
+                                                }
+                                                response.send(vm);
+                                            }).catch(function (err) {
+                                                console.dir('Error in transaction commit ' + err);
+                                            });
+                                        }
+                                    });
+                        });
+                    });
+                // Delete data - End
+            }).catch(function (error) {
+            console.dir(error);
+        });
+    } catch (error) {
+        console.dir(error);
+    }
+});
+
 
 
 
